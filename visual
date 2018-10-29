@@ -1,0 +1,72 @@
+#include <opencv2\opencv.hpp>   
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+#include <iostream>
+
+using namespace std;
+using namespace cv;
+
+int bSums(Mat src)
+{
+
+	int counter = 0, transvers = 0;
+	//迭代器访问像素点
+	Mat_<uchar>::iterator it = src.begin<uchar>();
+	Mat_<uchar>::iterator itend = src.end<uchar>();
+	for (; it != itend; ++it)
+	{
+		if ((*it) > 0) {
+			counter += 1;//二值化后，像素点是0或者255
+			transvers += ((it - src.begin<uchar>()) % 320);
+		}
+	}
+	if(counter)
+		return transvers/counter;
+	return -1;
+}
+
+//边缘检测
+int main()
+{
+	VideoCapture cap(0); //capture the video from web cam
+
+	if (!cap.isOpened())  // if not success, exit program
+	{
+		cout << "Cannot open the web cam" << endl;
+		return -1;
+	}
+
+	Mat DstPic, edge, grayImage, img;
+	while (true)
+	{
+		bool bSuccess = cap.read(img); // read a new frame from video
+		imshow("origin", img);
+		if (!bSuccess) //if not success, break loop
+		{
+			cout << "Cannot read a frame from video stream" << endl;
+			break;
+		}
+		resize(img, img, Size(img.cols / 2, img.rows / 2), 0, 0, INTER_LINEAR);
+
+		//创建与src同类型和同大小的矩阵
+		DstPic.create(img.size(), img.type());
+
+		//将原始图转化为灰度图
+		cvtColor(img, grayImage, COLOR_BGR2GRAY);
+
+		//先使用3*3内核来降噪
+		blur(grayImage, edge, Size(7, 7));
+
+		//运行canny算子		Canny(edge, edge, 7, 21, 3);
+		int blockSize = 9;
+		int constValue = 11;
+		adaptiveThreshold(edge, edge, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY_INV, blockSize, constValue);
+
+		imshow("边缘提取效果", edge);
+
+		int a = bSums(edge);//调用函数bSums
+		cout << "A:" << a;
+
+		waitKey(5);
+	}
+}
